@@ -1,5 +1,6 @@
 
 #include "../msdfgen.h"
+#include "stdio.h"
 
 #include "arithmetics.hpp"
 
@@ -56,7 +57,7 @@ void generatePseudoSDF(Bitmap<float> &output, const Shape &shape, double range, 
     }
 }
 
-static inline bool pixelClash(const FloatRGB &a, const FloatRGB &b, double threshold) {
+static inline bool pixelClash(const FloatRGBA &a, const FloatRGBA &b, double threshold) {
     // Only consider pair where both are on the inside or both are on the outside
     bool aIn = (a.r > .5f)+(a.g > .5f)+(a.b > .5f) >= 2;
     bool bIn = (b.r > .5f)+(b.g > .5f)+(b.b > .5f) >= 2;
@@ -90,7 +91,7 @@ static inline bool pixelClash(const FloatRGB &a, const FloatRGB &b, double thres
         && fabsf(ac-.5f) >= fabsf(bc-.5f); // Out of the pair, only flag the pixel farther from a shape edge
 }
 
-void msdfErrorCorrection(Bitmap<FloatRGB> &output, const Vector2 &threshold) {
+void msdfErrorCorrection(Bitmap<FloatRGBA> &output, const Vector2 &threshold) {
     std::vector<std::pair<int, int> > clashes;
     int w = output.width(), h = output.height();
     for (int y = 0; y < h; ++y)
@@ -102,13 +103,13 @@ void msdfErrorCorrection(Bitmap<FloatRGB> &output, const Vector2 &threshold) {
                 clashes.push_back(std::make_pair(x, y));
         }
     for (std::vector<std::pair<int, int> >::const_iterator clash = clashes.begin(); clash != clashes.end(); ++clash) {
-        FloatRGB &pixel = output(clash->first, clash->second);
+        FloatRGBA &pixel = output(clash->first, clash->second);
         float med = median(pixel.r, pixel.g, pixel.b);
         pixel.r = med, pixel.g = med, pixel.b = med;
     }
 }
 
-void generateMSDF(Bitmap<FloatRGB> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate, double edgeThreshold) {
+void generateMSDF(Bitmap<FloatRGBA> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate, double edgeThreshold, bool bitmapAlpha) {
     int w = output.width(), h = output.height();
 #ifdef MSDFGEN_USE_OPENMP
     #pragma omp parallel for
@@ -125,8 +126,11 @@ void generateMSDF(Bitmap<FloatRGB> &output, const Shape &shape, double range, co
             } r, g, b;
             r.nearEdge = g.nearEdge = b.nearEdge = NULL;
             r.nearParam = g.nearParam = b.nearParam = 0;
+            
+            float a = 0.0f;
+            SignedDistance minDistance;
 
-            for (std::vector<Contour>::const_iterator contour = shape.contours.begin(); contour != shape.contours.end(); ++contour)
+            for (std::vector<Contour>::const_iterator contour = shape.contours.begin(); contour != shape.contours.end(); ++contour) {
                 for (std::vector<EdgeHolder>::const_iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge) {
                     double param;
                     SignedDistance distance = (*edge)->signedDistance(p, param);
@@ -145,7 +149,16 @@ void generateMSDF(Bitmap<FloatRGB> &output, const Shape &shape, double range, co
                         b.nearEdge = &*edge;
                         b.nearParam = param;
                     }
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                    }
                 }
+
+                if (minDistance.distance > 0) {
+                    a = min(1.0, minDistance.distance / 0.5);
+                }
+            }
 
             if (r.nearEdge)
                 (*r.nearEdge)->distanceToPseudoDistance(r.minDistance, p, r.nearParam);
@@ -153,9 +166,16 @@ void generateMSDF(Bitmap<FloatRGB> &output, const Shape &shape, double range, co
                 (*g.nearEdge)->distanceToPseudoDistance(g.minDistance, p, g.nearParam);
             if (b.nearEdge)
                 (*b.nearEdge)->distanceToPseudoDistance(b.minDistance, p, b.nearParam);
+
             output(x, row).r = float(r.minDistance.distance/range+.5);
             output(x, row).g = float(g.minDistance.distance/range+.5);
             output(x, row).b = float(b.minDistance.distance/range+.5);
+
+            if (bitmapAlpha) {
+                output(x, row).a = a;
+            } else {
+                output(x, row).a = 1;
+            }            
         }
     }
 

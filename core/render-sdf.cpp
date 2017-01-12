@@ -6,8 +6,8 @@
 namespace msdfgen {
 
 template <typename S>
-inline FloatRGB mix(FloatRGB a, FloatRGB b, S weight) {
-    FloatRGB output = {
+inline FloatRGBA mix(FloatRGBA a, FloatRGBA b, S weight) {
+    FloatRGBA output = {
         mix(a.r, b.r, weight),
         mix(a.g, b.g, weight),
         mix(a.b, b.b, weight)
@@ -47,7 +47,7 @@ void renderSDF(Bitmap<float> &output, const Bitmap<float> &sdf, double pxRange) 
         }
 }
 
-void renderSDF(Bitmap<FloatRGB> &output, const Bitmap<float> &sdf, double pxRange) {
+void renderSDF(Bitmap<FloatRGBA> &output, const Bitmap<float> &sdf, double pxRange) {
     int w = output.width(), h = output.height();
     pxRange *= (double) (w+h)/(sdf.width()+sdf.height());
     for (int y = 0; y < h; ++y)
@@ -60,22 +60,22 @@ void renderSDF(Bitmap<FloatRGB> &output, const Bitmap<float> &sdf, double pxRang
         }
 }
 
-void renderSDF(Bitmap<float> &output, const Bitmap<FloatRGB> &sdf, double pxRange) {
+void renderSDF(Bitmap<float> &output, const Bitmap<FloatRGBA> &sdf, double pxRange) {
     int w = output.width(), h = output.height();
     pxRange *= (double) (w+h)/(sdf.width()+sdf.height());
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x) {
-            FloatRGB s = sample(sdf, Point2((x+.5)/w, (y+.5)/h));
+            FloatRGBA s = sample(sdf, Point2((x+.5)/w, (y+.5)/h));
             output(x, y) = distVal(median(s.r, s.g, s.b), pxRange);
         }
 }
 
-void renderSDF(Bitmap<FloatRGB> &output, const Bitmap<FloatRGB> &sdf, double pxRange) {
+void renderSDF(Bitmap<FloatRGBA> &output, const Bitmap<FloatRGBA> &sdf, double pxRange) {
     int w = output.width(), h = output.height();
     pxRange *= (double) (w+h)/(sdf.width()+sdf.height());
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x) {
-            FloatRGB s = sample(sdf, Point2((x+.5)/w, (y+.5)/h));
+            FloatRGBA s = sample(sdf, Point2((x+.5)/w, (y+.5)/h));
             output(x, y).r = distVal(s.r, pxRange);
             output(x, y).g = distVal(s.g, pxRange);
             output(x, y).b = distVal(s.b, pxRange);
@@ -91,7 +91,7 @@ void simulate8bit(Bitmap<float> &bitmap) {
         }
 }
 
-void simulate8bit(Bitmap<FloatRGB> &bitmap) {
+void simulate8bit(Bitmap<FloatRGBA> &bitmap) {
     int w = bitmap.width(), h = bitmap.height();
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x) {

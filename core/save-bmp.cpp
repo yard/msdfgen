@@ -82,7 +82,7 @@ bool saveBmp(const Bitmap<float> &bitmap, const char *filename) {
     return !fclose(file);
 }
 
-bool saveBmp(const Bitmap<FloatRGB> &bitmap, const char *filename) {
+bool saveBmp(const Bitmap<FloatRGBA> &bitmap, const char *filename) {
     FILE *file = fopen(filename, "wb");
     if (!file)
         return false;

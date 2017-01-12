@@ -131,7 +131,7 @@ static void parseColoring(Shape &shape, const char *edgeAssignment) {
     }
 }
 
-static void invertColor(Bitmap<FloatRGB> &bitmap) {
+static void invertColor(Bitmap<FloatRGBA> &bitmap) {
     for (int y = 0; y < bitmap.height(); ++y)
         for (int x = 0; x < bitmap.width(); ++x) {
             bitmap(x, y).r = .5f-bitmap(x, y).r;
@@ -269,6 +269,7 @@ static const char *helpText =
     "  sdf - Generate conventional monochrome signed distance field.\n"
     "  psdf - Generate monochrome signed pseudo-distance field.\n"
     "  msdf - Generate multi-channel signed distance field. This is used by default if no mode is specified.\n"
+    "  msdfa - Same as msdf plus outputs bitmap version of the shape into alpha channel.\n"
     "  metrics - Report shape metrics only.\n"
     "\n"
     "INPUT SPECIFICATION\n"
@@ -344,6 +345,7 @@ int main(int argc, const char * const *argv) {
         SINGLE,
         PSEUDO,
         MULTI,
+        MULTIA,
         METRICS
     } mode = MULTI;
     Format format = AUTO;
@@ -389,6 +391,7 @@ int main(int argc, const char * const *argv) {
         ARG_MODE("sdf", SINGLE)
         ARG_MODE("psdf", PSEUDO)
         ARG_MODE("msdf", MULTI)
+        ARG_MODE("msdfa", MULTIA)
         ARG_MODE("metrics", METRICS)
 
         ARG_CASE("-svg", 1) {
@@ -715,7 +718,7 @@ int main(int argc, const char * const *argv) {
 
     // Compute output
     Bitmap<float> sdf;
-    Bitmap<FloatRGB> msdf;
+    Bitmap<FloatRGBA> msdf;
     switch (mode) {
         case SINGLE: {
             sdf = Bitmap<float>(width, height);
@@ -727,13 +730,14 @@ int main(int argc, const char * const *argv) {
             generatePseudoSDF(sdf, shape, range, scale, translate);
             break;
         }
+        case MULTIA: 
         case MULTI: {
             if (!skipColoring)
                 edgeColoringSimple(shape, angleThreshold, coloringSeed);
             if (edgeAssignment)
                 parseColoring(shape, edgeAssignment);
-            msdf = Bitmap<FloatRGB>(width, height);
-            generateMSDF(msdf, shape, range, scale, translate, edgeThreshold);
+            msdf = Bitmap<FloatRGBA>(width, height);
+            generateMSDF(msdf, shape, range, scale, translate, edgeThreshold, mode == MULTIA);
             break;
         }
         default:
@@ -764,7 +768,7 @@ int main(int argc, const char * const *argv) {
             if (testRenderMulti || testRender)
                 simulate8bit(sdf);
             if (testRenderMulti) {
-                Bitmap<FloatRGB> render(testWidthM, testHeightM);
+                Bitmap<FloatRGBA> render(testWidthM, testHeightM);
                 renderSDF(render, sdf, avgScale*range);
                 if (!savePng(render, testRenderMulti))
                     puts("Failed to write test render file.");
@@ -776,6 +780,7 @@ int main(int argc, const char * const *argv) {
                     puts("Failed to write test render file.");
             }
             break;
+        case MULTIA:
         case MULTI:
             error = writeOutput(msdf, output, format);
             if (error)
@@ -783,7 +788,7 @@ int main(int argc, const char * const *argv) {
             if (testRenderMulti || testRender)
                 simulate8bit(msdf);
             if (testRenderMulti) {
-                Bitmap<FloatRGB> render(testWidthM, testHeightM);
+                Bitmap<FloatRGBA> render(testWidthM, testHeightM);
                 renderSDF(render, msdf, avgScale*range);
                 if (!savePng(render, testRenderMulti))
                     puts("Failed to write test render file.");

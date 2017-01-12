@@ -4,8 +4,8 @@
 namespace msdfgen {
 
 /// A floating-point RGB pixel.
-struct FloatRGB {
-    float r, g, b;
+struct FloatRGBA {
+    float r, g, b, a;
 };
 
 /// A 2D image bitmap.
